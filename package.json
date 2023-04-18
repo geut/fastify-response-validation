@@ -56,5 +56,8 @@
   "bugs": {
     "url": "https://github.com/geut/fastify-response-validation/issues"
   },
-  "homepage": "https://github.com/geut/fastify-response-validation#readme"
+  "homepage": "https://github.com/geut/fastify-response-validation#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
