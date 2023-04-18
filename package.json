@@ -1,0 +1,62 @@
+{
+  "name": "@geut/fastify-response-validation",
+  "version": "0.0.1",
+  "description": "A simple plugin that enables response validation for Fastify.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --format=cjs --target=es2022 --platform=node --outfile=./dist/index.cjs --sourcemap",
+    "test": "uvu",
+    "posttest": "npm run lint",
+    "lint": "standard",
+    "version": "chan release --allow-yanked ${npm_package_version} && git add .",
+    "prepublishOnly": "npm test"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "fastify-plugin": "^4.5.0"
+  },
+  "devDependencies": {
+    "@geut/chan": "^3.0.0",
+    "esbuild": "^0.17.17",
+    "fastify": "^4.15.0",
+    "standard": "^17.0.0",
+    "uvu": "^0.5.3"
+  },
+  "standard": {
+    "env": [
+      "node"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/geut/fastify-response-validation.git"
+  },
+  "keywords": [
+    "fastify",
+    "geut",
+    "response",
+    "validation"
+  ],
+  "author": {
+    "name": "GEUT",
+    "email": "contact@geutstudio.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/geut/fastify-response-validation/issues"
+  },
+  "homepage": "https://github.com/geut/fastify-response-validation#readme"
+}

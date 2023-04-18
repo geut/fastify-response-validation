@@ -1,0 +1,127 @@
+import fp from 'fastify-plugin'
+import Ajv from 'ajv'
+import formats from 'ajv-formats'
+
+function fastifyResponseValidation (fastify, opts, next) {
+  const { plugins: ajvPlugins, ...ajvOptions } = Object.assign({
+    coerceTypes: true,
+    useDefaults: true,
+    removeAdditional: true,
+    allErrors: true,
+    plugins: [
+      formats
+    ]
+  }, opts.ajv)
+
+  if (!ajvPlugins || !Array.isArray(ajvPlugins)) {
+    next(new Error(`ajv.plugins option should be an array, instead got '${typeof ajvPlugins}'`))
+    return
+  }
+
+  const ajv = new Ajv(ajvOptions)
+
+  for (const plugin of ajvPlugins) {
+    if (Array.isArray(plugin)) {
+      plugin[0](ajv, plugin[1])
+    } else {
+      plugin(ajv)
+    }
+  }
+
+  if (opts.responseValidation !== false) {
+    fastify.addHook('onRoute', onRoute)
+  }
+
+  function onRoute (opts) {
+    if (opts.responseValidation === false) return
+    if (opts.schema && opts.schema.response) {
+      opts.onSend = typeof opts.onSend === 'function' ? [opts.onSend] : (opts.onSend || [])
+      opts.onSend.push(buildHook(opts.schema.response))
+    }
+  }
+
+  function buildHook (schema) {
+    const statusCodes = {}
+    for (const statusCode in schema) {
+      const responseSchema = schema[statusCode]
+
+      if (responseSchema.content !== undefined) {
+        statusCodes[statusCode] = {}
+        for (const mediaName in responseSchema.content) {
+          statusCodes[statusCode][mediaName] = ajv.compile(
+            getSchemaAnyway(responseSchema.content[mediaName].schema)
+          )
+        }
+      } else {
+        statusCodes[statusCode] = ajv.compile(
+          getSchemaAnyway(responseSchema)
+        )
+      }
+    }
+
+    return onSend
+
+    function onSend (request, reply, payload, done) {
+      let validate = statusCodes[reply.statusCode] || statusCodes[(reply.statusCode + '')[0] + 'xx']
+
+      if (validate !== undefined) {
+        // Per media type validation
+        if (validate.constructor === Object) {
+          const mediaName = reply.getHeader('content-type').split(';')[0]
+          if (validate[mediaName] == null) {
+            next(new Error(`No schema defined for media type ${mediaName}`))
+            return
+          }
+          validate = validate[mediaName]
+        }
+        try {
+          const valid = validate(payload ? JSON.parse(payload) : payload)
+
+          if (!valid) {
+            const err = new Error(schemaErrorsText(validate.errors))
+            err.validation = validate.errors
+            throw err
+          }
+        } catch (err) {
+          reply.code(500)
+          return done(err)
+        }
+      }
+      done(null, payload)
+    }
+  }
+
+  next()
+}
+
+/**
+ * Copy-paste of getSchemaAnyway from fastify
+ *
+ * https://github.com/fastify/fastify/blob/23371945d01c270af24f4a5b7e2e31c4e806e6b3/lib/schemas.js#L113
+ */
+function getSchemaAnyway (schema) {
+  if (schema.$ref || schema.oneOf || schema.allOf || schema.anyOf || schema.$merge || schema.$patch) return schema
+  if (!schema.type && !schema.properties) {
+    return {
+      type: 'object',
+      properties: schema
+    }
+  }
+  return schema
+}
+
+function schemaErrorsText (errors) {
+  let text = ''
+  const separator = ', '
+  for (const e of errors) {
+    text += 'response' + (e.instancePath || '') + ' ' + e.message + separator
+  }
+  return text.slice(0, -separator.length)
+}
+
+export default fp(fastifyResponseValidation, {
+  fastify: '4.x',
+  name: '@geut/response-validation'
+})
+
+export { fastifyResponseValidation }
