@@ -20,7 +20,6 @@
     "test": "uvu",
     "posttest": "npm run lint",
     "lint": "standard",
-    "version": "chan release --allow-yanked ${npm_package_version} && git add .",
     "prepublishOnly": "npm test && npm run build"
   },
   "dependencies": {
@@ -29,7 +28,6 @@
     "fastify-plugin": "^4.5.0"
   },
   "devDependencies": {
-    "@geut/chan": "^3.0.0",
     "esbuild": "^0.17.17",
     "fastify": "^4.15.0",
     "standard": "^17.0.0",
